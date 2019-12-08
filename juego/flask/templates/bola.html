@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>bola</title>
+        <!--link rel="stylesheet" href="style.css" type="text/css" media="screen" charset="utf-8>">-->
+        <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="crossorigin="anonymous"></script>
+      </head>
+      <body>
+          <button id="Score">Click para aumentar score</button>
+          <div id="score">Score:</div>
+          <div id="number">0</div>
+    </body>
+</html>
+
+  <script>
+      function AumentarScore() {
+          var value = parseInt(document.getElementById("number").innerHTML, 10);
+          value = isNaN(value) ? 0 : value;
+          value++;
+          document.getElementById("number").innerHTML = value;
+  }
+
+  $( "#Score").on( "click", function(event) {
+      AumentarScore();
+  });
+</script>

@@ -1,0 +1,17 @@
+<canvas></canvas>
+<script>
+	let context = document.querySelector("canvas").getContext("2d");
+  	let img = document.createElement("img");
+
+	img.src = "img/test.png";
+ 	img.addEventListener("load", () => {
+  		context.canvas.width = 1000;
+  		context.canvas.height = 1000;
+  
+    	/*for (let x = 10; x <= 2000; x += 100) {
+      		context.drawImage(img, x, 10, 100, 100);
+    	}*/
+    
+		context.drawImage(img, 0, 0);
+ 	});
+</script>

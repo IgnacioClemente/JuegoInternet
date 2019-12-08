@@ -1,0 +1,160 @@
+<canvas id="scenery" style="position: absolute; z-index: -1"></canvas>
+<canvas id="player" style="position: absolute; z-index: 0"></canvas>
+<div id="score">Score: 0</div>
+
+<script>
+	var playerDead = false;
+	var playerX = 10;
+	var score = 0;
+	let playerWalkSpeed = 10;
+	var facingRight=1;
+	let canvasWidth = 800, canvasHeight = 600;
+	let ballSize = 60;
+	let ballX = 400, ballY = 300;
+	let ballSpeedY = -10, ballSpeedX = 10;
+
+	let bulletActive = false;
+	let bulletSpeed = 15;
+	let bulletY, bulletX = 0;
+
+	//Obtener contexto del canvas para el jugador
+	let cx = player.getContext("2d");
+	cx.canvas.width = canvasWidth;
+	cx.canvas.height = canvasHeight;
+
+	// Crear y dibujar el jugador
+	let img = document.createElement("img");
+	img.src = "img/player.png";
+	let spriteW = 48, spriteH = 60;
+
+	// Crear y dibujar la pelota
+	let imgball = document.createElement("img");
+	imgball.src = "img/ball.png";
+
+	let imgBullet = document.createElement("img");
+	imgBullet.src = "img/bullet.png";
+
+	// Obtener contexto del escenario
+	let cxbg = scenery.getContext("2d");
+	cxbg.canvas.width = canvasWidth;
+	cxbg.canvas.height = canvasHeight;
+
+	// Crear y dibujar el fondo
+	let imgbg = document.createElement("img");
+	imgbg.src = "img/test.png";
+
+
+	// Función para espejar el canvas
+	function flipHorizontally(contextRef, around) {
+		//contextRef.translate(around, 0);
+		//contextRef.save();
+		contextRef.scale(-1, 1);
+		//contextRef.translate(-around, 0);
+	}
+
+	//Colision entre circulos
+	function detectCollision(ax, ay, ar, bx, by, br)
+	{
+		var dx = ax - bx;
+		var dy = ay - by;
+		var distance = Math.sqrt(dx * dx + dy * dy);
+
+		//Si la distancia es menor a la suma de los radios, hay colision
+		if(distance < ar + br)
+			return true;
+		else
+			return false;
+	}
+
+	imgball.addEventListener("load", () => {
+  	// Función de callback con intervalo (nuestro "gameloop")
+  	setInterval(() => {
+
+				//cxbg.clearRect(ballX - 20, ballY-20, ballSize * 2 , ballSize * 2);
+
+				cxbg.drawImage(imgbg, 0, 0, canvasWidth, canvasHeight);
+				cxbg.drawImage(imgball, ballX, ballY, ballSize, ballSize);
+				ballX += ballSpeedX;
+				ballY += ballSpeedY;
+				if(bulletActive)
+				{
+						cxbg.drawImage(imgBullet, bulletX, bulletY, 15, 30);
+						bulletY -= bulletSpeed;
+						if(detectCollision(bulletX, bulletY, 15, ballX, ballY, ballSize/2))
+						{
+								score++;
+								bulletActive = false;
+			          document.getElementById("score").innerHTML = "Score: " + score;
+						}
+				}
+
+				if(ballY < 0 || ballY >= canvasHeight - ballSize)
+					ballSpeedY *= -1;
+
+				if(ballX < 0 || ballX >= canvasWidth - ballSize)
+					ballSpeedX *= -1;
+		}, 120);
+	});
+
+	img.addEventListener("load", () => {
+  	let cycle = 0;
+
+  	// Función de callback con intervalo (nuestro "gameloop")
+  	setInterval(() => {
+			//cx.save();
+			//cx.scale(facingRight, 1);
+
+			cx.clearRect(playerX * facingRight - 60 * facingRight, canvasHeight - spriteH, spriteW * facingRight + 65 * facingRight, spriteH);
+			if(!playerDead)
+			{
+				cx.drawImage(img,
+								 // Origen
+								 cycle * spriteW, 0, spriteW, spriteH,
+								 // Destino
+								 playerX * facingRight, canvasHeight - spriteH, spriteW, spriteH);
+
+	 		  playerDead = detectCollision(playerX, canvasHeight - spriteH, spriteW /2, ballX, ballY, ballSize /2);
+		 	}
+  		cycle = (cycle + 1) % 8;
+				//cx.restore();
+  	}, 120);
+	});
+
+  	// Espejar el jugador
+  //	flipHorizontally(cx, playerX + spriteW / 2);
+
+		document.addEventListener('keydown', function(event){
+
+		    var key = event.key || event.keyCode;
+
+		    if(key === 'ArrowLeft' || key === 'Left' || key === 39)
+				{
+
+					if(facingRight == 1)
+					{
+						flipHorizontally(cx,playerX,spriteW/2);
+						facingRight = -1;
+					}
+
+					playerX -= playerWalkSpeed;
+		    }
+
+		    if(key === 'ArrowRight' || key === 'Right' || key === 37)
+				{
+
+					if(facingRight == -1) {
+						flipHorizontally(cx,playerX,spriteW/2);
+						facingRight = 1;
+					}
+					playerX += playerWalkSpeed;
+		    }
+
+				if(key === 'ArrowUp' || key === 38 )
+				{
+						bulletActive = true;
+						bulletX = playerX + (spriteW / 2) * facingRight;
+						bulletY = canvasHeight - spriteH;
+				}
+		});
+
+		</script>
