@@ -1,0 +1,290 @@
+<html>
+<style>
+	html, body {
+		margin: 0;
+		color: white;
+}
+	#score{
+		font-size: 36px;
+	}
+	#gameover
+	{
+		top: 45%;
+		left: 40%;
+		font-size: 68px;
+		font-weight:bold;
+	}
+	#health{
+		right:0%;
+		font-size: 36px;
+	}
+</style>
+<head>
+	<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+	<link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+</head>
+<body>
+<canvas id="scenery" style="position: absolute; z-index: -1"></canvas>
+<canvas id="player" style="position: absolute; z-index: 0"></canvas>
+<a href="/scoreboard" id="gameover" style="color:white;position: absolute; z-index: 1"></a>
+<div id="health" style="position: absolute; z-index: 1"></div>
+<div id="score">Score: 0</div>
+<form style="display:none" id="scoreForm" action="/scoreboard" method="POST">
+	<input type="number" id="scoreValue" name="score" hidden>
+</form>
+<div>
+    <h1>Hello, {% if name %}{{ name }}{% else %}Stranger{% endif %}!</h1>
+</div>
+
+<script>
+	var debugging = false;
+
+	var playerDead, playerImmune = false;
+	var playerX = 108;
+	var playerHealth = 3;
+	var score = 0;
+	let playerWalkSpeed = 12;
+	var facingRight=1;
+	let canvasWidth = document.body.clientWidth, canvasHeight = document.body.clientHeight;
+	let ballSize = 60;
+	let ballX = 400, ballY = 300;
+	let ballSpeedY = -15, ballSpeedX = 12;
+	let scoreUpValue = 10;
+	let cyclesToTakeDamageAgain = 3;
+	let cyclesCounter = 0;
+
+	let bulletActive = false;
+	let bulletSpeed = 16;
+	let bulletY, bulletX = 0;
+	let bulletW = 20;
+	let bulletH = 40;
+	let gameOver = false;
+	let cycle = 0;
+
+	//Obtener contexto del canvas para el jugador
+	let cx = player.getContext("2d");
+	cx.canvas.width = canvasWidth;
+	cx.canvas.height = canvasHeight;
+
+	document.getElementById("health").innerHTML = "Lifes: " + playerHealth;
+	// Crear y dibujar el jugador
+	let img = document.createElement("img");
+	img.src = "/static/img/character.png";
+	let spriteW = 108, spriteH = 120;
+	let spriteR = spriteW / 3;
+
+	// Crear y dibujar la pelota
+	let imgball = document.createElement("img");
+	imgball.src = "/static/img/ball.png";
+
+	let imgBullet = document.createElement("img");
+	imgBullet.src = "/static/img/bullet.png";
+
+	// Obtener contexto del escenario
+	let cxbg = scenery.getContext("2d");
+	cxbg.canvas.width = canvasWidth;
+	cxbg.canvas.height = canvasHeight;
+
+	// Crear y dibujar el fondo
+	let imgbg = document.createElement("img");
+	imgbg.src = "/static/img/background.jpg";
+
+	// Función para espejar el canvas
+	function flipHorizontally(contextRef, around) {
+		//contextRef.translate(around, 0);
+		//contextRef.save();
+		contextRef.scale(-1, 1);
+		//contextRef.translate(-around, 0);
+	}
+
+	//Colision entre circulos
+	function detectCollision(ax, ay, ar, bx, by, br)
+	{
+		var dx = ax - bx;
+		var dy = ay - by;
+		var distance = Math.sqrt(dx * dx + dy * dy);
+		//Si la distancia es menor a la suma de los radios, hay colision
+		if(distance < ar + br)
+			return true;
+		else
+			return false;
+	}
+
+	function resetBall()
+	{
+		ballX = Math.random() * (canvasWidth - ballSize);
+		ballY = (Math.random() * ((canvasHeight - ballSize) / 2));
+		if(ballSpeedY > 0)
+			ballSpeedY *= -1;
+	}
+
+	function takeDamage()
+	{
+		playerHealth--;
+		playerImmune = true;
+		cycle = 0;
+
+		cx.clearRect(playerX * facingRight - 120 * facingRight, canvasHeight - spriteH, spriteW * facingRight * 2.5, spriteH);
+		playerX = spriteW;
+
+		if(facingRight == -1)
+		{
+			flipHorizontally(cx,playerX,spriteW/2);
+			facingRight = 1;
+		}
+		document.getElementById("health").innerHTML = "Lifes: " + playerHealth;
+		if(playerHealth <= 0)
+		{
+			playerDead = true;
+		}
+	}
+
+	function endGame()
+	{
+		document.getElementById("scoreValue").value = score;
+		document.getElementById("scoreForm").submit();
+		gameOver = true;
+	}
+
+	imgball.addEventListener("load", () => {
+  	// Función de callback con intervalo (nuestro "gameloop")
+  	setInterval(() => {
+				if(gameOver) return;
+
+				//cxbg.clearRect(ballX - 20, ballY-20, ballSize * 2 , ballSize * 2);
+				cx.clearRect(playerX * facingRight - 120 * facingRight, canvasHeight - spriteH, spriteW * facingRight * 2.5, spriteH);
+				if(!playerDead)
+				{
+					if(debugging)
+					{
+						cx.beginPath();
+						cx.arc(playerX + ((spriteW /2)), canvasHeight - spriteH / 2, spriteR, 0, 2 * Math.PI, false);
+						cx.lineWidth = 3;
+						cx.strokeStyle = '#FF0000';
+						cx.stroke();
+					}
+					if(playerImmune)
+						cx.globalAlpha = 0.4;
+
+					cx.drawImage(img,
+									 // Origen
+									 cycle * spriteW, 0, spriteW, spriteH,
+									 // Destino
+									 playerX * facingRight, canvasHeight - spriteH, spriteW, spriteH);
+
+				 	cx.globalAlpha = 1;
+					if(!playerImmune && detectCollision(playerX + ((spriteW /2) * facingRight), canvasHeight - spriteH / 2, spriteR, ballX + ballSize /2 , ballY + ballSize / 2, ballSize /2))
+					{
+						takeDamage();
+					}
+				}
+				else
+				{
+						document.getElementById("gameover").innerHTML = "YOU LOSE";
+						endGame();
+				}
+
+				if(debugging)
+				{
+					cx.beginPath();
+					cx.arc(ballX + ballSize /2 , ballY + ballSize / 2, ballSize /2, 0, 2 * Math.PI, false);
+					cx.lineWidth = 3;
+					cx.strokeStyle = '#FF0000';
+					cx.stroke();
+				}
+				cxbg.drawImage(imgbg, 0, 0, canvasWidth, canvasHeight);
+				cxbg.drawImage(imgball, ballX, ballY, ballSize, ballSize);
+				ballX += ballSpeedX;
+				ballY += ballSpeedY;
+
+				if(bulletActive)
+				{
+						cxbg.drawImage(imgBullet, bulletX, bulletY, bulletW	, bulletH);
+						bulletY -= bulletSpeed;
+						if(debugging)
+						{
+							cx.beginPath();
+							cx.arc(bulletX + bulletW /2 , bulletY + bulletH / 2, bulletW /2, 0, 2 * Math.PI, false);
+							cx.lineWidth = 3;
+							cx.strokeStyle = '#FF0000';
+							cx.stroke();
+						}
+						if(detectCollision(bulletX+ bulletW /2, bulletY + bulletH / 2, bulletW / 2, ballX + ballSize /2, ballY + ballSize /2, ballSize/2))
+						{
+								score += scoreUpValue;
+								bulletActive = false;
+								resetBall();
+			          document.getElementById("score").innerHTML = "Score: " + score;
+						}
+				}
+
+				if(score >= 100)
+				{
+					document.getElementById("gameover").innerHTML = "YOU WIN";
+					endGame();
+				}
+
+				if(ballY < 0 || ballY >= canvasHeight - ballSize)
+					ballSpeedY *= -1;
+
+				if(ballX < 0 || ballX >= canvasWidth - ballSize)
+					ballSpeedX *= -1;
+
+					cycle = ( cycle  + 1) % 8;
+					if(cycle == 7)
+					{
+						cyclesCounter++;
+						if(cyclesCounter == cyclesToTakeDamageAgain)
+						{
+							cyclesCounter = 0;
+							playerImmune = false;
+						}
+					}
+
+		}, 80);
+	});
+
+  	// Espejar el jugador
+  //	flipHorizontally(cx, playerX + spriteW / 2);
+
+		document.addEventListener('keydown', function(event){
+
+		    var key = event.key || event.keyCode;
+
+		    if(key === 'ArrowLeft' || key === 'Left' || key === 39)
+				{
+
+					if(facingRight == 1)
+					{
+						flipHorizontally(cx,playerX,spriteW/2);
+						playerX += spriteW;
+						facingRight = -1;
+					}
+
+					if(playerX > spriteW)
+						playerX -= playerWalkSpeed;
+		    }
+
+		    if(key === 'ArrowRight' || key === 'Right' || key === 37)
+				{
+
+					if(facingRight == -1) {
+						flipHorizontally(cx,playerX,spriteW/2);
+						playerX -= spriteW;
+						facingRight = 1;
+					}
+					if(playerX < canvasWidth-spriteW)
+						playerX += playerWalkSpeed;
+		    }
+
+				if(key === 'ArrowUp' || key === 38 )
+				{
+						bulletActive = true;
+						bulletX = playerX + (spriteW / 2) * facingRight - bulletW /2;
+						bulletY = canvasHeight - spriteH;
+				}
+		});
+
+		</script>
+	</body>
+</html>
